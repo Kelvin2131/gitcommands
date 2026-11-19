@@ -1,0 +1,2 @@
+client_code,sku,name,barcode,description,photo_url,length_mm,width_mm,height_mm,weight_g,cost_cents,reorder_point,reorder_qty
+NORTH,MUG-12,Stoneware mug,840000000001,Example row,/samples/mug.svg,120,90,100,420,350,24,48

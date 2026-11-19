@@ -1,0 +1,3 @@
+client_code,external_ref,channel,customer_name,ship_line1,ship_city,ship_region,ship_postal,ship_country,ship_by,sku,qty
+NORTH,TM-10021,TEMU,Temu customer,10 Packing Lane,Newark,NJ,07102,US,2026-11-19,MUG-12,2
+NORTH,TM-10021,TEMU,Temu customer,10 Packing Lane,Newark,NJ,07102,US,2026-11-19,TOWEL-SET,1

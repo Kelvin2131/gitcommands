@@ -1,0 +1,10 @@
+{
+  "framework": "nextjs",
+  "buildCommand": "node scripts/vercel-build.mjs",
+  "crons": [
+    {
+      "path": "/api/cron/product-photos",
+      "schedule": "0 */4 * * *"
+    }
+  ]
+}
