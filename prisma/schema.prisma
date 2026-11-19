@@ -1,0 +1,383 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  // Migrations use the direct Neon connection. The build copies DATABASE_URL
+  // into DATABASE_URL_UNPOOLED when only the pooled URL was set.
+  directUrl = env("DATABASE_URL_UNPOOLED")
+}
+
+enum Role {
+  OWNER
+  STAFF
+}
+
+enum Channel {
+  TEMU
+  WALMART
+  OTHER
+}
+
+enum OrderStatus {
+  IMPORTED
+  PICKING
+  PACKED
+  SHIPPED
+  CANCELLED
+  RETURNED
+}
+
+enum InboundStatus {
+  EXPECTED
+  RECEIVING
+  CLOSED
+}
+
+enum MovementReason {
+  RECEIVE
+  ADJUST
+  CYCLE_COUNT
+  PICK
+  RETURN
+  TRANSFER
+}
+
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PAID
+  VOID
+}
+
+enum ResetStatus {
+  REQUESTED
+  APPROVED
+  USED
+  EXPIRED
+}
+
+enum ReturnStatus {
+  OPEN
+  RESTOCKED
+  DISCARDED
+}
+
+model User {
+  id           String            @id @default(cuid())
+  email        String            @unique
+  name         String
+  passwordHash String
+  role         Role
+  active       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  sessions     Session[]
+  resets       PasswordReset[]
+  movements    InventoryMovement[]
+  audits       AccountAudit[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  userAgent String   @default("")
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model PasswordReset {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash   String?     @unique
+  status      ResetStatus @default(REQUESTED)
+  expiresAt   DateTime?
+  requestedAt DateTime    @default(now())
+  usedAt      DateTime?
+
+  @@index([userId, status])
+  @@index([requestedAt])
+}
+
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  email     String
+  ip        String
+  success   Boolean
+  createdAt DateTime @default(now())
+
+  @@index([email, createdAt])
+  @@index([ip, createdAt])
+}
+
+model AccountAudit {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actor     User?    @relation(fields: [actorId], references: [id])
+  action    String
+  detail    String   @default("")
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model Client {
+  id                       String            @id @default(cuid())
+  name                     String
+  code                     String            @unique
+  contactName              String            @default("")
+  email                    String            @default("")
+  phone                    String            @default("")
+  notes                    String            @default("")
+  active                   Boolean           @default(true)
+  pickFeeCents             Int               @default(0)
+  packFeeCents             Int               @default(0)
+  storageCentsPerCuFtMonth Int               @default(0)
+  labelMarkupBps           Int               @default(0)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
+  products                 Product[]
+  orders                   Order[]
+  inbounds                 InboundShipment[]
+  invoices                 Invoice[]
+  returns                  Return[]
+}
+
+model Product {
+  id             String              @id @default(cuid())
+  clientId       String
+  client         Client              @relation(fields: [clientId], references: [id])
+  sku            String
+  name           String
+  barcode        String              @default("")
+  description    String              @default("")
+  photoUrl       String              @default("")
+  photoOk        Boolean             @default(true)
+  photoCheckedAt DateTime?
+  lengthMm       Int                 @default(0)
+  widthMm        Int                 @default(0)
+  heightMm       Int                 @default(0)
+  weightGrams    Int                 @default(0)
+  costCents      Int                 @default(0)
+  reorderPoint   Int                 @default(0)
+  reorderQty     Int                 @default(0)
+  active         Boolean             @default(true)
+  createdAt      DateTime            @default(now())
+  updatedAt      DateTime            @updatedAt
+  balances       InventoryBalance[]
+  movements      InventoryMovement[]
+  orderLines     OrderLine[]
+  inboundLines   InboundLine[]
+  returnLines    ReturnLine[]
+
+  @@unique([clientId, sku])
+  @@index([barcode])
+  @@index([clientId, active])
+}
+
+model Location {
+  id        String              @id @default(cuid())
+  code      String              @unique
+  name      String
+  kind      String
+  active    Boolean             @default(true)
+  balances  InventoryBalance[]
+  movements InventoryMovement[]
+}
+
+model InventoryBalance {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id])
+  locationId String
+  location   Location @relation(fields: [locationId], references: [id])
+  qty        Int      @default(0)
+  updatedAt  DateTime @updatedAt
+
+  @@unique([productId, locationId])
+  @@index([locationId])
+}
+
+model InventoryMovement {
+  id            String         @id @default(cuid())
+  productId     String
+  product       Product        @relation(fields: [productId], references: [id])
+  clientId      String
+  locationId    String
+  location      Location       @relation(fields: [locationId], references: [id])
+  qtyDelta      Int
+  qtyBefore     Int
+  qtyAfter      Int
+  reason        MovementReason
+  note          String         @default("")
+  userId        String?
+  user          User?          @relation(fields: [userId], references: [id])
+  referenceType String         @default("")
+  referenceId   String         @default("")
+  createdAt     DateTime       @default(now())
+
+  @@index([clientId, createdAt])
+  @@index([productId, createdAt])
+  @@index([createdAt])
+  @@index([referenceType, referenceId])
+}
+
+model InboundShipment {
+  id        String        @id @default(cuid())
+  clientId  String
+  client    Client        @relation(fields: [clientId], references: [id])
+  reference String
+  status    InboundStatus @default(EXPECTED)
+  notes     String        @default("")
+  arrivedAt DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  lines     InboundLine[]
+
+  @@unique([clientId, reference])
+  @@index([clientId, status])
+}
+
+model InboundLine {
+  id          String          @id @default(cuid())
+  shipmentId  String
+  shipment    InboundShipment @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product         @relation(fields: [productId], references: [id])
+  expectedQty Int
+  receivedQty Int             @default(0)
+
+  @@index([shipmentId])
+  @@index([productId])
+}
+
+model Order {
+  id               String      @id @default(cuid())
+  clientId         String
+  client           Client      @relation(fields: [clientId], references: [id])
+  externalRef      String
+  channel          Channel     @default(OTHER)
+  status           OrderStatus @default(IMPORTED)
+  customerName     String      @default("")
+  shipLine1        String      @default("")
+  shipCity         String      @default("")
+  shipRegion       String      @default("")
+  shipPostal       String      @default("")
+  shipCountry      String      @default("US")
+  orderedAt        DateTime    @default(now())
+  shipBy           DateTime?
+  shippedAt        DateTime?
+  trackingNumber   String      @default("")
+  carrier          String      @default("")
+  labelVendor      String      @default("")
+  labelCostCents   Int         @default(0)
+  labelBilledCents Int         @default(0)
+  pickFeeCents     Int         @default(0)
+  packFeeCents     Int         @default(0)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  lines            OrderLine[]
+  returns          Return[]
+
+  @@unique([clientId, externalRef])
+  @@index([status, shipBy])
+  @@index([clientId, status])
+  @@index([shippedAt])
+  @@index([labelVendor])
+}
+
+model OrderLine {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  qty       Int
+  pickedQty Int     @default(0)
+
+  @@index([orderId])
+  @@index([productId])
+}
+
+model Return {
+  id        String       @id @default(cuid())
+  clientId  String
+  client    Client       @relation(fields: [clientId], references: [id])
+  orderId   String?
+  order     Order?       @relation(fields: [orderId], references: [id])
+  status    ReturnStatus @default(OPEN)
+  reason    String       @default("")
+  notes     String       @default("")
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+  lines     ReturnLine[]
+
+  @@index([clientId, status])
+}
+
+model ReturnLine {
+  id        String  @id @default(cuid())
+  returnId  String
+  return    Return  @relation(fields: [returnId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  qty       Int
+  restocked Int     @default(0)
+
+  @@index([returnId])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id])
+  number        String        @unique
+  periodStart   DateTime
+  periodEnd     DateTime
+  status        InvoiceStatus @default(DRAFT)
+  storageCents  Int           @default(0)
+  pickPackCents Int           @default(0)
+  labelCents    Int           @default(0)
+  totalCents    Int           @default(0)
+  createdAt     DateTime      @default(now())
+  issuedAt      DateTime?
+  paidAt        DateTime?
+  lines         InvoiceLine[]
+
+  @@index([clientId, status])
+  @@index([clientId, periodStart, periodEnd])
+}
+
+model InvoiceLine {
+  id          String  @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  kind        String
+  description String
+  qty         Int
+  unitCents   Int
+  amountCents Int
+
+  @@index([invoiceId])
+}
+
+model ImportRun {
+  id         String   @id @default(cuid())
+  kind       String
+  filename   String   @default("")
+  userId     String?
+  okCount    Int      @default(0)
+  errorCount Int      @default(0)
+  errors     String   @default("")
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+}

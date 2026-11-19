@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #1c1915;
+  --color-paper: #f3efe4;
+  --color-card: #fffdf8;
+  --color-line: #e3dac8;
+  --color-accent: #9a3412;
+  --color-ok: #3f6212;
+  --color-warn: #92400e;
+  --color-bad: #991b1b;
+  --font-sans: var(--font-barlow), "Avenir Next", "Segoe UI", sans-serif;
+  --font-mono: var(--font-plex), ui-monospace, monospace;
+}
+
+@layer base {
+  body {
+    background: var(--color-paper);
+    color: var(--color-ink);
+  }
+  :focus-visible {
+    outline: 3px solid #9a3412;
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .input {
+    @apply min-h-12 w-full rounded-lg border border-line bg-white px-3 text-base text-ink outline-none;
+  }
+  .btn {
+    @apply inline-flex min-h-12 items-center justify-center rounded-lg bg-accent px-4 text-base font-semibold text-white disabled:opacity-60;
+  }
+  .btn-ghost {
+    @apply inline-flex min-h-12 items-center justify-center rounded-lg border border-line bg-card px-4 text-base font-semibold text-ink;
+  }
+  .card {
+    @apply rounded-2xl border border-line bg-card p-4 shadow-sm;
+  }
+  .nav-link {
+    @apply flex min-h-11 items-center rounded-lg px-3 text-base font-medium text-ink/80;
+  }
+  .nav-on {
+    @apply bg-accent text-white;
+  }
+  .pill {
+    @apply inline-flex items-center rounded-full bg-stone-200 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide text-ink;
+  }
+}
+
+.scan-input {
+  font-size: 1.5rem;
+  letter-spacing: 0.04em;
+}

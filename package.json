@@ -1,0 +1,49 @@
+{
+  "name": "cratekeep",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev -p 38471 -H 0.0.0.0",
+    "build": "node scripts/vercel-build.mjs",
+    "start": "next start -H 0.0.0.0 -p ${PORT:-38471}",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "seed": "node scripts/with-database-env.mjs tsx prisma/seed.ts",
+    "password": "node scripts/with-database-env.mjs tsx scripts/set-password.ts",
+    "db:deploy": "node scripts/with-database-env.mjs npx prisma migrate deploy",
+    "db:generate": "node scripts/with-database-env.mjs npx prisma generate",
+    "postinstall": "node scripts/postinstall.mjs"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.19.3",
+    "@zxing/browser": "^0.2.1",
+    "bcryptjs": "^3.0.3",
+    "next": "16.4.6",
+    "papaparse": "^5.7.1",
+    "pdf-lib": "^1.17.1",
+    "prisma": "^6.19.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "^22",
+    "@types/papaparse": "^5.5.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "tailwindcss": "4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "^5",
+    "vitest": "^3.2.7"
+  }
+}
