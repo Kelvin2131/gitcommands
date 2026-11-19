@@ -37,7 +37,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
                 <span className="block text-sm text-stone-600">
                   {client.active ? "Active" : "Paused"}
                   {user.role === "OWNER"
-                    ? ` · pick ${money(client.pickFeeCents)} · pack ${money(client.packFeeCents)}`
+                    ? ` · pick ${money(client.pickFeeCents)} · ${money(client.packFeeCents)} per box`
                     : ""}
                 </span>
               </Link>

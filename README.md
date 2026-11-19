@@ -8,7 +8,7 @@ You do not need to be a programmer to use it day to day. The sections below are 
 
 1. Sign in.
 2. **Receive** an inbound carton: open the shipment, scan each item, and it lands in a bin.
-3. **Orders**: open what is due today, scan to pick, mark it packed, type the tracking number, the carrier, who sold the label, and what you paid.
+3. **Orders**: open what is due today, scan to pick, mark it packed, and enter how many boxes it ships in. Then type a tracking number for each box, the carrier, who sold the label, and what you paid. One order in two boxes is two box fees.
 4. If a count looks wrong, open the product and save a cycle count. The old number and the new number are both kept.
 5. At the end of the month the owner opens **Billing**, checks the draft, then issues it and downloads the PDF.
 
@@ -92,8 +92,9 @@ Opening stock is a CSV on the Import page (`mode` is `set` or `add`). Sample fil
 
 - Money is stored in cents. A label that cost $6.12 is 612 cents. Totals do not use decimal math.
 - Storage on an invoice is the cubic feet of what is on the shelf when you create the draft, for the days in the period, at the client's rate per cubic foot per 30 days.
-- Pick and pack fees are copied onto the order when you pack it. Changing a client's fee later does not rewrite shipped orders.
-- Label markup is a percent on top of what you paid. `0` bills the label at cost. `5` bills 5% more. The dashboard "profit" is pick fees, pack fees, and that markup for orders shipped this month.
+- The box fee is the client's fee per box shipped, times how many boxes the order left in. One order in two boxes is twice the fee. The count defaults to 1 and can be changed until that order is on an invoice. Cancelling the order, or sending it back to picking, clears the box fee, the pick fee, and any label fee so they are not invoiced.
+- Pick and box fees are copied onto the order when you pack it. Changing a client's fee later does not rewrite orders that are already packed. To use a new rate, unpack and pack the order again before it ships.
+- Label markup is a percent on top of what you paid. `0` bills the label at cost. `5` bills 5% more. The dashboard "profit" is pick fees, box fees, and that markup for orders shipped this month.
 - Every stock change writes a history row: who, which bin, the old quantity, and the new quantity.
 - A product always keeps the client it was created for. A scan that matches two clients asks you to choose. It will not guess.
 

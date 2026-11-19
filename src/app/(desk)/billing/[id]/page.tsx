@@ -33,13 +33,20 @@ export default async function InvoicePage({
       />
       <Notices notice={query.notice} />
       <p className="text-sm text-stone-600">
-        Storage {money(invoice.storageCents)} · pick and pack {money(invoice.pickPackCents)} · labels {money(invoice.labelCents)}
+        Storage {money(invoice.storageCents)} · pick and boxes {money(invoice.pickPackCents)} · labels {money(invoice.labelCents)}
       </p>
       {invoice.lines.length === 0 ? <p>Nothing to bill in this period.</p> : null}
       <ul className="grid gap-2">
         {invoice.lines.map((line) => (
           <li key={line.id} className="card flex justify-between gap-3 text-sm">
-            <span>{line.description}</span>
+            <span>
+              {line.description}
+              {line.qty > 1 ? (
+                <span className="block text-stone-600">
+                  {line.qty} × {money(line.unitCents)}
+                </span>
+              ) : null}
+            </span>
             <span className="font-semibold">{money(line.amountCents)}</span>
           </li>
         ))}

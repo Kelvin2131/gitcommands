@@ -55,6 +55,8 @@ export function Field({
   autoComplete,
   className,
   id,
+  min,
+  max,
 }: {
   label: string;
   name: string;
@@ -66,6 +68,8 @@ export function Field({
   autoComplete?: string;
   className?: string;
   id?: string;
+  min?: number;
+  max?: number;
 }) {
   return (
     <label className="grid gap-1 text-sm" htmlFor={id}>
@@ -78,6 +82,8 @@ export function Field({
         defaultValue={defaultValue}
         autoFocus={autoFocus}
         autoComplete={autoComplete}
+        min={min}
+        max={max}
         className={`input ${className ?? ""}`}
       />
       {hint ? <span className="text-stone-600">{hint}</span> : null}

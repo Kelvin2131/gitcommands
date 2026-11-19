@@ -28,7 +28,13 @@ export function ClientForm({ client }: { client?: ClientFields }) {
       <Field label="Email" name="email" type="email" defaultValue={client?.email} />
       <Field label="Phone" name="phone" defaultValue={client?.phone} />
       <Field label="Pick fee per unit" name="pickFee" defaultValue={centsToInput(client?.pickFeeCents ?? 0)} required />
-      <Field label="Pack fee per order" name="packFee" defaultValue={centsToInput(client?.packFeeCents ?? 0)} required />
+      <Field
+        label="Fee per box shipped"
+        name="packFee"
+        defaultValue={centsToInput(client?.packFeeCents ?? 0)}
+        required
+        hint="Charged once for every box that leaves, no matter how many units are inside. Two boxes is twice this amount."
+      />
       <Field
         label="Storage per cubic foot per 30 days"
         name="storageFee"

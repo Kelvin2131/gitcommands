@@ -18,7 +18,7 @@ export async function saveClientAction(_prev: ActionState, form: FormData): Prom
       phone: field(form, "phone"),
       notes: field(form, "notes"),
       pickFeeCents: moneyField(form, "pickFee", "Pick fee"),
-      packFeeCents: moneyField(form, "packFee", "Pack fee"),
+      packFeeCents: moneyField(form, "packFee", "Fee per box"),
       storageCentsPerCuFtMonth: moneyField(form, "storageFee", "Storage fee"),
       labelMarkupBps: percentToBps(field(form, "markup") || "0"),
       active: field(form, "active") !== "0",

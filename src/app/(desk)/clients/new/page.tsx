@@ -8,7 +8,10 @@ export default async function NewClientPage() {
   await requireOwnerPage();
   return (
     <>
-      <PageHeader title="New client" detail="Fees are copied onto an order when you pack it, so later price changes do not rewrite old work." />
+      <PageHeader
+        title="New client"
+        detail="The box fee is per box shipped. Fees are copied onto an order when you pack it, so later price changes do not rewrite old work."
+      />
       <ClientForm />
     </>
   );
