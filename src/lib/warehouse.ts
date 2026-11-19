@@ -1,5 +1,14 @@
 import type { Channel, Prisma } from "@prisma/client";
-import { buildInvoiceAmounts } from "@/lib/billing";
+import {
+  buildInvoiceAmounts,
+  assertBoxCount,
+  capturedBoxRateCents,
+  clearedShipmentFees,
+  joinTrackingNumbers,
+  packFeeForBoxes,
+  parseTrackingNumbers,
+  trackingNumbersOf,
+} from "@/lib/billing";
 import {
   groupOrderRows,
   parseOrderCsv,
@@ -92,7 +101,7 @@ export async function saveClient(
   const code = normalizeCode(input.code);
   for (const [label, value] of [
     ["Pick fee", input.pickFeeCents],
-    ["Pack fee", input.packFeeCents],
+    ["Fee per box", input.packFeeCents],
     ["Storage rate", input.storageCentsPerCuFtMonth],
   ] as const) {
     if (!Number.isInteger(value) || value < 0 || value > 100_000_000) {
@@ -524,7 +533,26 @@ export async function pickOrder(
   });
 }
 
-export async function packOrder(orderId: string) {
+const BOX_COUNT_STATUSES = new Set(["PACKED", "SHIPPED", "RETURNED"]);
+
+export function packFeeInvoiceWhere(order: { clientId: string; shippedAt: Date | null }) {
+  if (!order.shippedAt) return null;
+  return {
+    clientId: order.clientId,
+    status: { not: "VOID" as const },
+    periodStart: { lte: order.shippedAt },
+    periodEnd: { gt: order.shippedAt },
+  };
+}
+
+async function lockingInvoice(tx: Tx, order: { clientId: string; shippedAt: Date | null }) {
+  const where = packFeeInvoiceWhere(order);
+  if (!where) return null;
+  return tx.invoice.findFirst({ where, select: { id: true, number: true } });
+}
+
+export async function packOrder(orderId: string, boxCount = 1) {
+  const boxes = assertBoxCount(boxCount);
   await db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertTransition(order.status as OrderStatusName, "PACKED");
@@ -534,9 +562,33 @@ export async function packOrder(orderId: string) {
     const units = order.lines.reduce((sum, line) => sum + line.qty, 0);
     const pickFeeCents = lineAmountCents(units, order.client.pickFeeCents);
     if (pickFeeCents > 2_000_000_000) throw new DeskError("The pick fee is too large to store.");
+    const packFeeCents = packFeeForBoxes(boxes, order.client.packFeeCents);
     await tx.order.update({
       where: { id: order.id },
-      data: { status: "PACKED", pickFeeCents, packFeeCents: order.client.packFeeCents },
+      data: { status: "PACKED", pickFeeCents, packFeeCents, boxCount: boxes },
+    });
+  });
+}
+
+export async function updateBoxCount(orderId: string, boxCount: number) {
+  const boxes = assertBoxCount(boxCount);
+  await db.$transaction(async (tx) => {
+    const order = await loadOrder(tx, orderId);
+    if (!BOX_COUNT_STATUSES.has(order.status)) {
+      throw new DeskError("Set the box count when you pack the order.");
+    }
+    const invoice = await lockingInvoice(tx, order);
+    if (invoice) {
+      throw new DeskError(
+        `This order is already on invoice ${invoice.number}. Delete that draft, or void it, before changing the box count.`,
+      );
+    }
+    const rate = capturedBoxRateCents(order.packFeeCents, order.boxCount, order.client.packFeeCents);
+    const packFeeCents = packFeeForBoxes(boxes, rate);
+    const kept = trackingNumbersOf(order.trackingNumbers, order.trackingNumber).slice(0, boxes);
+    await tx.order.update({
+      where: { id: order.id },
+      data: { boxCount: boxes, packFeeCents, ...joinTrackingNumbers(kept) },
     });
   });
 }
@@ -547,24 +599,29 @@ export async function unpackOrder(orderId: string) {
     assertTransition(order.status as OrderStatusName, "PICKING");
     await tx.order.update({
       where: { id: order.id },
-      data: { status: "PICKING", pickFeeCents: 0, packFeeCents: 0 },
+      data: { status: "PICKING", ...clearedShipmentFees() },
     });
   });
 }
 
 export async function shipOrder(
   orderId: string,
-  input: { trackingNumber: string; carrier: string; labelVendor: string; labelCostCents: number },
+  input: {
+    trackingNumber?: string;
+    trackingNumbers?: string[];
+    carrier: string;
+    labelVendor: string;
+    labelCostCents: number;
+  },
 ) {
-  const trackingNumber = input.trackingNumber.trim();
   const carrier = input.carrier.trim();
   const labelVendor = input.labelVendor.trim();
-  if (trackingNumber.length < 4) throw new DeskError("Enter the tracking number.");
   if (carrier.length < 2) throw new DeskError("Enter the carrier, such as UPS or USPS.");
   if (labelVendor.length < 2) throw new DeskError("Enter who sold the label, such as Pirate Ship.");
   if (!Number.isInteger(input.labelCostCents) || input.labelCostCents < 0) {
     throw new DeskError("Enter the label cost.");
   }
+  const provided = input.trackingNumbers ?? [input.trackingNumber ?? ""];
   await db.$transaction(async (tx) => {
     const order = await loadOrder(tx, orderId);
     assertTransition(order.status as OrderStatusName, "SHIPPED");
@@ -574,12 +631,25 @@ export async function shipOrder(
       data: {
         status: "SHIPPED",
         shippedAt: new Date(),
-        trackingNumber: trackingNumber.slice(0, 80),
+        ...joinTrackingNumbers(parseTrackingNumbers(provided, order.boxCount)),
         carrier: carrier.slice(0, 40),
         labelVendor: labelVendor.slice(0, 40),
         labelCostCents: input.labelCostCents,
         labelBilledCents,
       },
+    });
+  });
+}
+
+export async function correctTracking(orderId: string, trackingNumbers: string[]) {
+  await db.$transaction(async (tx) => {
+    const order = await loadOrder(tx, orderId);
+    if (order.status !== "SHIPPED" && order.status !== "RETURNED") {
+      throw new DeskError("Add tracking numbers when you ship the order.");
+    }
+    await tx.order.update({
+      where: { id: order.id },
+      data: joinTrackingNumbers(parseTrackingNumbers(trackingNumbers, order.boxCount)),
     });
   });
 }
@@ -603,7 +673,10 @@ export async function cancelOrder(userId: string, orderId: string, locationId: s
         expectedClientId: order.clientId,
       });
     }
-    await tx.order.update({ where: { id: order.id }, data: { status: "CANCELLED" } });
+    await tx.order.update({
+      where: { id: order.id },
+      data: { status: "CANCELLED", ...clearedShipmentFees() },
+    });
   });
 }
 
@@ -729,9 +802,11 @@ export async function createInvoice(clientId: string, startIso: string, endIso: 
     orders: orders.map((order) => ({
       externalRef: order.externalRef,
       units: order.lines.reduce((sum, line) => sum + line.qty, 0),
+      boxCount: order.boxCount,
       pickFeeCents: order.pickFeeCents,
       packFeeCents: order.packFeeCents,
       labelBilledCents: order.labelBilledCents,
+      cancelled: order.status === "CANCELLED",
     })),
   });
   for (let attempt = 0; attempt < 3; attempt += 1) {

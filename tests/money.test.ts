@@ -48,7 +48,7 @@ describe("money", () => {
       days: 30,
       centsPerCuFtMonth: 1000,
       storage: [{ sku: "BOX", name: "Box", lengthMm: 100, widthMm: 100, heightMm: 100, qty: 2 }],
-      orders: [{ externalRef: "A1", units: 2, pickFeeCents: 150, packFeeCents: 200, labelBilledCents: 525 }],
+      orders: [{ externalRef: "A1", units: 2, boxCount: 1, pickFeeCents: 150, packFeeCents: 200, labelBilledCents: 525 }],
     });
     expect(draft.storageCents).toBe(71);
     expect(draft.pickPackCents).toBe(350);

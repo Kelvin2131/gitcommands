@@ -139,6 +139,7 @@ model Client {
   notes                    String            @default("")
   active                   Boolean           @default(true)
   pickFeeCents             Int               @default(0)
+  /// Fee charged for each box that ships. The column name is unchanged so existing client rates stay put.
   packFeeCents             Int               @default(0)
   storageCentsPerCuFtMonth Int               @default(0)
   labelMarkupBps           Int               @default(0)
@@ -275,13 +276,19 @@ model Order {
   orderedAt        DateTime    @default(now())
   shipBy           DateTime?
   shippedAt        DateTime?
+  /// First tracking number. Kept so existing search and displays keep working.
   trackingNumber   String      @default("")
+  /// One tracking number per line when an order ships in more than one box.
+  trackingNumbers  String      @default("")
   carrier          String      @default("")
   labelVendor      String      @default("")
   labelCostCents   Int         @default(0)
   labelBilledCents Int         @default(0)
   pickFeeCents     Int         @default(0)
+  /// Total box fee captured at pack time (box count × the per-box rate). Not the client's current rate.
   packFeeCents     Int         @default(0)
+  /// How many boxes this order ships in. Existing orders default to 1.
+  boxCount         Int         @default(1)
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
   lines            OrderLine[]

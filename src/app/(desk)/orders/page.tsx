@@ -27,6 +27,7 @@ export default async function OrdersPage({
               { externalRef: { contains: q, mode: "insensitive" } },
               { customerName: { contains: q, mode: "insensitive" } },
               { trackingNumber: { contains: q, mode: "insensitive" } },
+              { trackingNumbers: { contains: q, mode: "insensitive" } },
             ],
           }
         : {}),
@@ -76,6 +77,9 @@ export default async function OrdersPage({
                   <span className="font-semibold">{order.externalRef}</span>
                   <span className="block text-sm text-stone-600">
                     {order.client.code} · {channelLabel(order.channel)} · {order.customerName || "No name"} · {order.lines.reduce((sum, line) => sum + line.qty, 0)} units
+                    {order.status === "PACKED" || order.status === "SHIPPED" || order.status === "RETURNED"
+                      ? ` · ${order.boxCount} ${order.boxCount === 1 ? "box" : "boxes"}`
+                      : ""}
                   </span>
                 </span>
                 <Pill>{labelStatus(order.status)}</Pill>

@@ -25,7 +25,7 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <>
       <PageHeader
         title="Billing"
-        detail="Storage uses the stock on the shelf when you create the invoice. Pick, pack, and labels use the amounts saved when the order shipped."
+        detail="Storage uses the stock on the shelf when you create the invoice. Pick, box fees, and labels use the amounts saved on the order."
       />
       <Notices notice={query.notice} />
       <DeskForm action={createInvoiceAction} submit="Create draft" className="card grid gap-3">

@@ -40,6 +40,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
                         <span className="block font-semibold">{order.externalRef}</span>
                         <span className="text-sm text-stone-600">
                           {order.client.code} · {order.customerName || "No name"} · {picked}/{units} picked
+                          {order.status === "PACKED" ? ` · ${order.boxCount} ${order.boxCount === 1 ? "box" : "boxes"}` : ""}
                         </span>
                       </span>
                       <Pill>{labelStatus(order.status)}</Pill>
@@ -74,7 +75,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
         <section className="grid gap-4 lg:grid-cols-2">
           <div className="card">
             <h2 className="text-xl font-semibold">Profit this month</h2>
-            <p className="text-sm text-stone-600">Pick and pack fees, plus label markup. Storage is billed when you make an invoice.</p>
+            <p className="text-sm text-stone-600">Pick fees, box fees, and label markup. Storage is billed when you make an invoice.</p>
             <ul className="mt-3 grid gap-2">
               {data.profit.map((row) => (
                 <li key={row.id} className="flex justify-between gap-3">
